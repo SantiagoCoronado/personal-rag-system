@@ -19,13 +19,31 @@ class User(UserBase):
     class Config:
         from_attributes = True
 
-# Token schemas
-class Token(BaseModel):
+
+# Login schemas
+class UserLoginRequest(BaseModel):
+    username: str
+    password: str
+
+class UserLoginResponse(BaseModel):
     access_token: str
     token_type: str
+    user: User
 
-class TokenData(BaseModel):
-    username: Optional[str] = None
+class UserRegisterRequest(BaseModel):
+    email: EmailStr
+    username: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    username: str
+    is_active: bool
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 # Document schemas
 class DocumentBase(BaseModel):
@@ -65,5 +83,16 @@ class QueryRequest(BaseModel):
 class QueryResponse(BaseModel):
     query: str
     answer: str
-    sources: List[Embedding]
-    confidence: Optional[float] = None 
+    sources: List[dict]
+    context_used: bool
+
+class QueryHistoryEntry(BaseModel):
+    id: int
+    user_id: int
+    query: str
+    answer: str
+    sources_count: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True

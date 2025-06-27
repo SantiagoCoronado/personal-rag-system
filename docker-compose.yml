@@ -12,27 +12,34 @@ services:
       - DB_NAME=rag_db
       - DB_USER=postgres
       - DB_PASSWORD=password
-      - SECRET_KEY=your-secret-key-here-change-in-production
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SECRET_KEY=your-secret-key-here-change-in-production-make-it-long
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-dummy-key-for-testing}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-3.5-turbo}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-ada-002}
       - MAX_TOKENS=${MAX_TOKENS:-500}
       - TEMPERATURE=${TEMPERATURE:-0.7}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
       - AWS_REGION=${AWS_REGION:-us-east-1}
-      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-}
       - UPLOAD_PATH=/app/uploads
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
-      - ALLOWED_EXTENSIONS=${ALLOWED_EXTENSIONS:-pdf,txt,md}
+      - ALLOWED_EXTENSIONS=${ALLOWED_EXTENSIONS:-pdf}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:8000}
-      - DEBUG=${DEBUG:-True}
+      - DEBUG=${DEBUG:-False}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
-      - ./uploads:/app/uploads
+      - uploads_data:/app/uploads
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   db:
     image: pgvector/pgvector:pg15
@@ -40,11 +47,20 @@ services:
       - POSTGRES_DB=rag_db
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rag_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
-  postgres_data: 
+  postgres_data:
+  uploads_data: 

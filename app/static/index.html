@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG System - Document Q&A</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 800px;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #2d3748;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .section h3 {
+            margin-bottom: 15px;
+            color: #2d3748;
+            font-size: 18px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+        
+        input, textarea, button {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #5a67d8;
+        }
+        
+        button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+        
+        .error {
+            color: #e53e3e;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .success {
+            color: #38a169;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .results {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .answer {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .sources {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 15px;
+        }
+        
+        .source-item {
+            background: #f7fafc;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        
+        .user-info {
+            background: #e6fffa;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #38a169;
+        }
+        
+        .file-input {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        .file-input input[type=file] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-input-label {
+            display: block;
+            padding: 12px;
+            background: #f7fafc;
+            border: 2px dashed #cbd5e0;
+            border-radius: 6px;
+            text-align: center;
+            color: #4a5568;
+            transition: all 0.2s;
+        }
+        
+        .file-input:hover .file-input-label {
+            border-color: #667eea;
+            background: #f0fff4;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>RAG System</h1>
+            <p>Document Q&A with AI</p>
+        </div>
+        
+        <div class="content">
+            <!-- Authentication Section -->
+            <div id="auth-section" class="section">
+                <h3>Login / Register</h3>
+                
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" placeholder="Enter your username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" placeholder="Enter your email">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" placeholder="Enter your password">
+                </div>
+                
+                <div class="form-group">
+                    <button id="login-btn" onclick="login()">Login</button>
+                </div>
+                
+                <div class="form-group">
+                    <button id="register-btn" onclick="register()">Register</button>
+                </div>
+                
+                <div id="auth-message"></div>
+            </div>
+            
+            <!-- User Info Section (hidden by default) -->
+            <div id="user-section" class="hidden">
+                <div class="user-info">
+                    <strong>Welcome, <span id="user-name"></span>!</strong>
+                    <button onclick="logout()" style="float: right; width: auto; padding: 5px 10px; font-size: 12px;">Logout</button>
+                </div>
+            </div>
+            
+            <!-- File Upload Section (hidden by default) -->
+            <div id="upload-section" class="section hidden">
+                <h3>Upload Document</h3>
+                
+                <div class="form-group">
+                    <label>Select PDF file to upload:</label>
+                    <div class="file-input">
+                        <input type="file" id="file-input" accept=".pdf" onchange="handleFileSelect(event)">
+                        <label for="file-input" class="file-input-label">
+                            <span id="file-label">Choose PDF file or drag & drop here</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <button id="upload-btn" onclick="uploadFile()" disabled>Upload Document</button>
+                </div>
+                
+                <div id="upload-message"></div>
+            </div>
+            
+            <!-- Query Section (hidden by default) -->
+            <div id="query-section" class="section hidden">
+                <h3>Ask Questions</h3>
+                
+                <div class="form-group">
+                    <label for="query-input">Your Question:</label>
+                    <textarea id="query-input" rows="3" placeholder="Ask a question about your uploaded documents..." maxlength="500"></textarea>
+                    <small style="color: #6b7280;">Max 500 characters</small>
+                </div>
+                
+                <div class="form-group">
+                    <button id="query-btn" onclick="submitQuery()">Ask Question</button>
+                </div>
+                
+                <div id="query-message"></div>
+                
+                <!-- Results Display -->
+                <div id="query-results" class="hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = null;
+        let selectedFile = null;
+        
+        // API base URL
+        const API_BASE = '';
+        
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            if (authToken) {
+                // Try to get current user info
+                getCurrentUser();
+            }
+        });
+        
+        // Authentication functions
+        async function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!username || !password) {
+                showMessage('auth-message', 'Please enter both username and password', 'error');
+                return;
+            }
+            
+            try {
+                setLoading('login-btn', true);
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.access_token;
+                    localStorage.setItem('authToken', authToken);
+                    currentUser = data.user;
+                    showAuthenticatedState();
+                    showMessage('auth-message', 'Login successful!', 'success');
+                } else {
+                    showMessage('auth-message', data.detail || 'Login failed', 'error');
+                }
+            } catch (error) {
+                showMessage('auth-message', 'Network error: ' + error.message, 'error');
+            } finally {
+                setLoading('login-btn', false);
+            }
+        }
+        
+        async function register() {
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!username || !email || !password) {
+                showMessage('auth-message', 'Please fill in all fields', 'error');
+                return;
+            }
+            
+            try {
+                setLoading('register-btn', true);
+                
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        email: email,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('auth-message', 'Registration successful! Please login.', 'success');
+                    // Clear form
+                    document.getElementById('password').value = '';
+                } else {
+                    showMessage('auth-message', data.detail || 'Registration failed', 'error');
+                }
+            } catch (error) {
+                showMessage('auth-message', 'Network error: ' + error.message, 'error');
+            } finally {
+                setLoading('register-btn', false);
+            }
+        }
+        
+        async function getCurrentUser() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    currentUser = await response.json();
+                    showAuthenticatedState();
+                } else {
+                    // Invalid token
+                    logout();
+                }
+            } catch (error) {
+                console.error('Error getting user info:', error);
+                logout();
+            }
+        }
+        
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem('authToken');
+            showUnauthenticatedState();
+        }
+        
+        // UI state management
+        function showAuthenticatedState() {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('user-section').classList.remove('hidden');
+            document.getElementById('upload-section').classList.remove('hidden');
+            document.getElementById('query-section').classList.remove('hidden');
+            
+            if (currentUser) {
+                document.getElementById('user-name').textContent = currentUser.username;
+            }
+        }
+        
+        function showUnauthenticatedState() {
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('user-section').classList.add('hidden');
+            document.getElementById('upload-section').classList.add('hidden');
+            document.getElementById('query-section').classList.add('hidden');
+        }
+        
+        // File upload functions
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.type !== 'application/pdf') {
+                    showMessage('upload-message', 'Please select a PDF file', 'error');
+                    return;
+                }
+                
+                if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                    showMessage('upload-message', 'File size must be less than 10MB', 'error');
+                    return;
+                }
+                
+                selectedFile = file;
+                document.getElementById('file-label').textContent = file.name;
+                document.getElementById('upload-btn').disabled = false;
+                showMessage('upload-message', '', '');
+            }
+        }
+        
+        async function uploadFile() {
+            if (!selectedFile) {
+                showMessage('upload-message', 'Please select a file first', 'error');
+                return;
+            }
+            
+            try {
+                setLoading('upload-btn', true);
+                
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                
+                const response = await fetch(`${API_BASE}/documents/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('upload-message', 'File uploaded successfully!', 'success');
+                    // Reset file input
+                    document.getElementById('file-input').value = '';
+                    document.getElementById('file-label').textContent = 'Choose PDF file or drag & drop here';
+                    document.getElementById('upload-btn').disabled = true;
+                    selectedFile = null;
+                } else {
+                    showMessage('upload-message', data.detail || 'Upload failed', 'error');
+                }
+            } catch (error) {
+                showMessage('upload-message', 'Network error: ' + error.message, 'error');
+            } finally {
+                setLoading('upload-btn', false);
+            }
+        }
+        
+        // Query functions
+        async function submitQuery() {
+            const query = document.getElementById('query-input').value.trim();
+            
+            if (!query) {
+                showMessage('query-message', 'Please enter a question', 'error');
+                return;
+            }
+            
+            if (query.length > 500) {
+                showMessage('query-message', 'Question is too long (max 500 characters)', 'error');
+                return;
+            }
+            
+            try {
+                setLoading('query-btn', true);
+                
+                const response = await fetch(`${API_BASE}/query/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        query: query
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResults(data);
+                    showMessage('query-message', '', '');
+                } else {
+                    showMessage('query-message', data.detail || 'Query failed', 'error');
+                }
+            } catch (error) {
+                showMessage('query-message', 'Network error: ' + error.message, 'error');
+            } finally {
+                setLoading('query-btn', false);
+            }
+        }
+        
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('query-results');
+            
+            let html = '<div class="results">';
+            html += '<h4>Answer:</h4>';
+            html += `<div class="answer">${escapeHtml(data.answer)}</div>`;
+            
+            if (data.sources && data.sources.length > 0) {
+                html += '<div class="sources">';
+                html += '<h5>Sources:</h5>';
+                data.sources.forEach((source, index) => {
+                    html += `<div class="source-item">`;
+                    html += `<strong>Document:</strong> ${escapeHtml(source.document_filename || 'Unknown')}<br>`;
+                    html += `<strong>Similarity:</strong> ${(source.similarity * 100).toFixed(1)}%`;
+                    html += `</div>`;
+                });
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            
+            resultsDiv.innerHTML = html;
+            resultsDiv.classList.remove('hidden');
+        }
+        
+        // Utility functions
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = type;
+        }
+        
+        function setLoading(buttonId, loading) {
+            const button = document.getElementById(buttonId);
+            if (loading) {
+                button.disabled = true;
+                button.innerHTML = '<span class="loading"></span>Loading...';
+            } else {
+                button.disabled = false;
+                // Reset button text based on button ID
+                switch(buttonId) {
+                    case 'login-btn':
+                        button.textContent = 'Login';
+                        break;
+                    case 'register-btn':
+                        button.textContent = 'Register';
+                        break;
+                    case 'upload-btn':
+                        button.textContent = 'Upload Document';
+                        break;
+                    case 'query-btn':
+                        button.textContent = 'Ask Question';
+                        break;
+                }
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

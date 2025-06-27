@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from typing import List, Optional
 import openai
+import numpy as np
 from . import models, schemas, auth
 from .config import settings
+from .services.embeddings import embedding_service
 
 # User CRUD operations
 def get_user(db: Session, user_id: int):
@@ -57,30 +58,60 @@ def delete_document(db: Session, document_id: int, user_id: int):
         db.commit()
     return document
 
-# Embedding CRUD operations
-def create_embedding(db: Session, embedding: schemas.EmbeddingBase, document_id: int):
-    db_embedding = models.Embedding(**embedding.dict(), document_id=document_id)
-    db.add(db_embedding)
-    db.commit()
-    db.refresh(db_embedding)
-    return db_embedding
+# Vector operations using the embedding service
+def store_embeddings(db: Session, document_id: int, chunks: List[str], 
+                    embeddings: List[List[float]]) -> bool:
+    """
+    Store embeddings for document chunks
+    
+    Args:
+        db: Database session
+        document_id: ID of the document
+        chunks: List of text chunks
+        embeddings: List of embedding vectors
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    return embedding_service.store_embeddings(db, document_id, chunks, embeddings)
 
-def get_similar_embeddings(db: Session, query_embedding: List[float], top_k: int = 5):
-    # Use pgvector to find similar embeddings
-    similar_embeddings = db.query(models.Embedding).order_by(
-        func.cosine_distance(models.Embedding.embedding, query_embedding)
-    ).limit(top_k).all()
-    return similar_embeddings
+def search_similar_chunks(db: Session, query_embedding: List[float], 
+                         user_id: Optional[int] = None, limit: int = 5) -> List[dict]:
+    """
+    Search for similar chunks using cosine similarity
+    
+    Args:
+        db: Database session
+        query_embedding: Query embedding vector
+        user_id: Optional user ID to filter by user's documents
+        limit: Maximum number of results
+        
+    Returns:
+        List of similar chunks with metadata
+    """
+    return embedding_service.search_similar_chunks(db, query_embedding, user_id, limit)
+
+def get_document_chunks(db: Session, document_id: int) -> List[dict]:
+    """
+    Get all chunks for a specific document
+    
+    Args:
+        db: Database session
+        document_id: ID of the document
+        
+    Returns:
+        List of chunks with metadata
+    """
+    return embedding_service.get_document_chunks(db, document_id)
 
 # OpenAI operations
 def get_embedding(text: str) -> List[float]:
     """Get embedding for text using OpenAI API"""
-    client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
-    response = client.embeddings.create(
-        input=text,
-        model=settings.EMBEDDING_MODEL
-    )
-    return response.data[0].embedding
+    return embedding_service.generate_embedding(text)
+
+def batch_get_embeddings(texts: List[str]) -> List[List[float]]:
+    """Get embeddings for multiple texts in batches"""
+    return embedding_service.batch_generate_embeddings(texts)
 
 def generate_answer(query: str, context: str) -> str:
     """Generate answer using OpenAI API"""
@@ -94,4 +125,24 @@ def generate_answer(query: str, context: str) -> str:
         max_tokens=settings.MAX_TOKENS,
         temperature=settings.TEMPERATURE
     )
-    return response.choices[0].message.content 
+    return response.choices[0].message.content
+
+# Query History CRUD operations
+def create_query_history(db: Session, user_id: int, query: str, answer: str, sources_count: int):
+    """Create a new query history entry"""
+    db_query = models.QueryHistory(
+        user_id=user_id,
+        query=query,
+        answer=answer,
+        sources_count=sources_count
+    )
+    db.add(db_query)
+    db.commit()
+    db.refresh(db_query)
+    return db_query
+
+def get_user_query_history(db: Session, user_id: int, skip: int = 0, limit: int = 20):
+    """Get query history for a user"""
+    return db.query(models.QueryHistory).filter(
+        models.QueryHistory.user_id == user_id
+    ).order_by(models.QueryHistory.created_at.desc()).offset(skip).limit(limit).all()

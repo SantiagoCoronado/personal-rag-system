@@ -6,13 +6,8 @@ from typing import List
 load_dotenv()
 
 class Settings:
-    # Database Configuration
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/rag_db")
-    DB_HOST: str = os.getenv("DB_HOST", "localhost")
-    DB_PORT: int = int(os.getenv("DB_PORT", "5432"))
-    DB_NAME: str = os.getenv("DB_NAME", "rag_db")
-    DB_USER: str = os.getenv("DB_USER", "postgres")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "password")
+    # Database Configuration - Force SQLite
+    DATABASE_URL: str = "sqlite:///./rag_system.db"
     
     # JWT Configuration
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here-change-in-production")
@@ -26,7 +21,7 @@ class Settings:
     MAX_TOKENS: int = int(os.getenv("MAX_TOKENS", "500"))
     TEMPERATURE: float = float(os.getenv("TEMPERATURE", "0.7"))
     
-    # AWS Configuration
+    # AWS Configuration (optional for testing)
     AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "")
     AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")
     AWS_REGION: str = os.getenv("AWS_REGION", "us-east-1")
@@ -34,7 +29,7 @@ class Settings:
     
     # File Upload Configuration
     UPLOAD_PATH: str = os.getenv("UPLOAD_PATH", "./uploads")
-    MAX_FILE_SIZE: int = int(os.getenv("MAX_FILE_SIZE", "10485760"))  # 10MB in bytes
+    MAX_FILE_SIZE: int = int(os.getenv("MAX_FILE_SIZE", "10485760"))
     ALLOWED_EXTENSIONS: List[str] = os.getenv("ALLOWED_EXTENSIONS", "pdf").split(",")
     
     # Document Processing Configuration
@@ -50,7 +45,6 @@ class Settings:
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))
     
-    # Validation method to check if required settings are present
     def validate(self) -> List[str]:
         """Validate that all required environment variables are set"""
         missing = []
@@ -58,31 +52,17 @@ class Settings:
         if not self.SECRET_KEY or self.SECRET_KEY == "your-secret-key-here-change-in-production":
             missing.append("SECRET_KEY")
         
-        if not self.OPENAI_API_KEY:
-            missing.append("OPENAI_API_KEY")
-            
-        if not self.AWS_ACCESS_KEY_ID:
-            missing.append("AWS_ACCESS_KEY_ID")
-            
-        if not self.AWS_SECRET_ACCESS_KEY:
-            missing.append("AWS_SECRET_ACCESS_KEY")
-            
-        if not self.S3_BUCKET_NAME:
-            missing.append("S3_BUCKET_NAME")
-            
+        # OpenAI and AWS are optional for basic testing
         return missing
     
     def get_database_url(self) -> str:
-        """Get the complete database URL"""
-        if self.DATABASE_URL and self.DATABASE_URL != "postgresql://postgres:password@localhost:5432/rag_db":
-            return self.DATABASE_URL
-        
-        return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        """Get the database URL - always return SQLite"""
+        return self.DATABASE_URL
 
 # Create global settings instance
 settings = Settings()
 
-# Validate settings on import (optional - comment out if you want manual validation)
+# Minimal validation for SQLite
 missing_vars = settings.validate()
 if missing_vars and settings.DEBUG:
     print(f"⚠️  Warning: Missing environment variables: {', '.join(missing_vars)}")
