@@ -1,6 +1,6 @@
 # RAG System - Document Q&A with Retrieval-Augmented Generation
 
-A minimal viable RAG (Retrieval-Augmented Generation) system for document Q&A built with FastAPI, PostgreSQL, OpenAI, and Docker.
+A minimal viable RAG (Retrieval-Augmented Generation) system for document Q&A built with FastAPI, SQLite, OpenAI, and Docker.
 
 ## 🚀 Quick Start
 
@@ -50,12 +50,7 @@ Create a `.env` file with the following variables (or copy from `env.example`):
 
 ```bash
 # Database Configuration
-DATABASE_URL=postgresql://postgres:password@db:5432/rag_db
-DB_HOST=db
-DB_PORT=5432
-DB_NAME=rag_db
-DB_USER=postgres
-DB_PASSWORD=password
+DATABASE_URL=sqlite:///./rag_system.db
 
 # JWT Configuration
 SECRET_KEY=your-secret-key-here-change-in-production-make-it-long
@@ -104,8 +99,8 @@ PORT=8000
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend UI   │    │   FastAPI App   │    │  PostgreSQL     │
-│  (Static HTML)  │◄──►│   + JWT Auth    │◄──►│  + pgvector     │
+│   Frontend UI   │    │   FastAPI App   │    │     SQLite      │
+│  (Static HTML)  │◄──►│   + JWT Auth    │◄──►│   Database      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                               │                        │
                               ▼                        ▼
@@ -118,7 +113,7 @@ PORT=8000
 
 ### Core Components
 - **FastAPI**: REST API with automatic OpenAPI documentation and JWT authentication
-- **PostgreSQL + pgvector**: Document and embedding storage with vector similarity search
+- **SQLite**: Document and embedding storage with vector similarity search
 - **OpenAI API**: Text embeddings (text-embedding-ada-002) and chat completion (GPT-3.5-turbo)
 - **File Storage**: Local filesystem or AWS S3 for document storage
 - **Authentication**: JWT-based user authentication with bcrypt password hashing
@@ -311,8 +306,8 @@ pip install -r requirements.txt
 cp env.example .env
 # Edit .env with your configuration
 
-# For local development with SQLite (optional)
-export DATABASE_URL="sqlite:///./rag_system.db"
+# Database URL is already configured for SQLite
+# export DATABASE_URL="sqlite:///./rag_system.db"
 
 # Run the application
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -323,8 +318,8 @@ python validate_env.py  # Check environment configuration
 
 ### Database Management
 ```bash
-# Access database console
-docker-compose exec db psql -U postgres -d rag_db
+# Access SQLite database console
+sqlite3 rag_system.db
 
 # View application logs
 docker-compose logs -f app
@@ -355,11 +350,11 @@ docker-compose logs -f db
 
 ### Database Access
 ```bash
-# Connect to PostgreSQL
-docker-compose exec db psql -U postgres -d rag_db
+# Connect to SQLite database
+sqlite3 rag_system.db
 
 # View tables
-\dt
+.tables
 
 # View embeddings
 SELECT id, document_id, chunk_index, length(chunk_text) as text_length 
@@ -402,9 +397,9 @@ Before deploying to production, ensure you:
    - Configure AWS credentials for S3 (if using)
 
 3. **Database**
-   - Use a managed PostgreSQL service (AWS RDS, etc.)
-   - Enable regular backups
-   - Configure connection pooling
+   - For production, consider migrating to PostgreSQL or another managed database service
+   - Enable regular backups of the SQLite database file
+   - Monitor database file size and performance
 
 4. **Monitoring**
    - Set up log aggregation
@@ -456,9 +451,9 @@ services:
    - Verify the API key has the necessary permissions
 
 2. **Database connection issues**
-   - Ensure PostgreSQL container is running: `docker-compose ps`
-   - Check database logs: `docker-compose logs db`
-   - Verify database environment variables
+   - Ensure SQLite database file exists and is accessible
+   - Check application logs: `docker-compose logs app`
+   - Verify database file permissions
 
 3. **File upload failures**
    - Check file size is under 10MB
@@ -557,7 +552,7 @@ This project is created for educational purposes as part of a weekend RAG system
 ### Available Features
 - ✅ JWT Authentication with user registration/login
 - ✅ PDF document upload and processing
-- ✅ Vector embeddings with pgvector
+- ✅ Vector embeddings with SQLite
 - ✅ RAG-based question answering
 - ✅ Document management (upload, list, delete)
 - ✅ Web interface for easy interaction
@@ -586,8 +581,6 @@ Consider adding these features for production use:
 fastapi==0.104.1          # Web framework
 uvicorn==0.24.0           # ASGI server
 sqlalchemy==2.0.31        # ORM
-psycopg2-binary==2.9.7    # PostgreSQL adapter
-pgvector==0.2.3           # Vector similarity search
 openai==1.35.0            # OpenAI API client
 pypdf2==3.0.1             # PDF processing
 python-jose[cryptography] # JWT handling
